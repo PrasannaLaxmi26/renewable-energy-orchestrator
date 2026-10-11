@@ -1,0 +1,587 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<title>Renewable Energy Orchestrator — Architecture</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    background: #0d1117; color: #e6edf3;
+    font-family: 'Segoe UI', system-ui, sans-serif;
+    padding: 32px;
+  }
+  h1 { font-size: 26px; color: #fff; margin-bottom: 4px; }
+  .subtitle { color: #8b949e; font-size: 14px; margin-bottom: 32px; }
+
+  /* ── Section labels ── */
+  .layer-label {
+    font-size: 11px; font-weight: 700; letter-spacing: 2px;
+    text-transform: uppercase; padding: 4px 12px; border-radius: 4px;
+    display: inline-block; margin-bottom: 10px;
+  }
+  .l1 { background: #0a2040; color: #79c0ff; border: 1px solid #1f6feb; }
+  .l2 { background: #0a2a0a; color: #56d364; border: 1px solid #2ea043; }
+  .l3 { background: #2a1500; color: #ffa657; border: 1px solid #d29922; }
+  .l4 { background: #1a0a2a; color: #d2a8ff; border: 1px solid #8b57e8; }
+
+  /* ── Layout rows ── */
+  .row { display: flex; align-items: flex-start; gap: 12px; margin-bottom: 12px; }
+  .row.center { align-items: center; }
+
+  /* ── Generic box ── */
+  .box {
+    border-radius: 8px; padding: 10px 14px;
+    font-size: 12px; line-height: 1.5;
+  }
+  .box-title { font-weight: 700; font-size: 13px; margin-bottom: 4px; }
+  .box-sub   { font-size: 11px; color: #8b949e; }
+  .box-tag   { font-size: 10px; border-radius: 3px; padding: 1px 5px;
+               display: inline-block; margin-top: 4px; font-weight: 600; }
+
+  /* ── Sensor boxes ── */
+  .sensor {
+    background: #0d2040; border: 1px solid #1f6feb;
+    border-radius: 8px; padding: 8px 12px;
+    font-size: 12px; flex: 1; min-width: 0;
+    text-align: center;
+  }
+  .sensor .icon { font-size: 22px; }
+  .sensor .name { font-weight: 700; font-size: 12px; color: #79c0ff; margin-top: 2px; }
+  .sensor .val  { font-size: 11px; color: #8b949e; }
+
+  /* ── LangGraph node ── */
+  .node {
+    border-radius: 8px; padding: 12px 16px;
+    font-size: 12px; flex: 1; min-width: 0;
+  }
+  .node-title { font-weight: 700; font-size: 13px; margin-bottom: 3px; }
+  .node-sub   { font-size: 11px; color: #8b949e; }
+  .node-badge { font-size: 10px; border-radius: 3px; padding: 1px 6px;
+                font-weight: 700; display: inline-block; margin-top: 5px; }
+
+  /* Node colours */
+  .n-aggregate  { background:#0d2a0a; border:1px solid #2ea043; }
+  .n-aggregate .node-title { color:#56d364; }
+  .n-classify   { background:#0a2040; border:1px solid #1f6feb; }
+  .n-classify .node-title  { color:#79c0ff; }
+  .n-quantify   { background:#1a1a0a; border:1px solid #d29922; }
+  .n-quantify .node-title  { color:#ffa657; }
+  .n-agents     { background:#1a0a2a; border:1px solid #8b57e8; }
+  .n-agents .node-title    { color:#d2a8ff; }
+  .n-resolve    { background:#2a0a0a; border:1px solid #da3633; }
+  .n-resolve .node-title   { color:#ff7b72; }
+  .n-simulate   { background:#0a1a2a; border:1px solid #388bfd; }
+  .n-simulate .node-title  { color:#58a6ff; }
+  .n-report     { background:#2a1a00; border:1px solid #f0c040; }
+  .n-report .node-title    { color:#f0c040; }
+
+  /* Sub-agent chips */
+  .agents-grid { display:grid; grid-template-columns: repeat(4, 1fr); gap:6px; margin-top:8px; }
+  .agent-chip {
+    background:#120a22; border:1px solid #6e40c9;
+    border-radius:6px; padding:6px 8px; text-align:center; font-size:11px;
+  }
+  .agent-chip .a-name { font-weight:700; color:#d2a8ff; font-size:11px; }
+  .agent-chip .a-model { font-size:10px; color:#6e40c9; margin-top:1px; }
+
+  /* ── Arrows ── */
+  .arrow {
+    color: #30363d; font-size: 20px; font-weight: 700;
+    align-self: center; flex-shrink: 0; padding: 0 2px;
+  }
+  .arrow-down {
+    text-align: center; color: #30363d; font-size: 20px;
+    line-height: 1; padding: 2px 0;
+  }
+
+  /* ── State box ── */
+  .state-box {
+    background:#0d1f38; border:1px dashed #1f6feb;
+    border-radius:8px; padding:10px 14px; font-size:11px;
+    color:#8b949e;
+  }
+  .state-box .s-title { color:#79c0ff; font-weight:700; font-size:12px; margin-bottom:6px; }
+  .state-fields { display:flex; flex-wrap:wrap; gap:4px; }
+  .s-field {
+    background:#0a1a30; border:1px solid #1f6feb;
+    border-radius:4px; padding:2px 7px; font-size:10px; color:#58a6ff;
+  }
+
+  /* ── Output boxes ── */
+  .output-box {
+    border-radius:8px; padding:10px 14px; font-size:12px; flex:1;
+  }
+  .o-hitl    { background:#0d2a0a; border:1px solid #2ea043; }
+  .o-brief   { background:#1a1500; border:1px solid #f0c040; }
+  .o-actions { background:#0d1f38; border:1px solid #1f6feb; }
+  .o-log     { background:#1a0a0a; border:1px solid #da3633; }
+
+  /* ── Priority stack ── */
+  .priority-row { display:flex; gap:6px; margin-top:8px; }
+  .priority-item {
+    border-radius:6px; padding:5px 10px; font-size:11px;
+    font-weight:700; flex:1; text-align:center;
+  }
+  .p1 { background:#4a0f0f; color:#ff7b72; border:1px solid #da3633; }
+  .p2 { background:#2a1500; color:#ffa657; border:1px solid #d29922; }
+  .p3 { background:#0a2a0a; color:#56d364; border:1px solid #2ea043; }
+  .p4 { background:#0a2040; color:#79c0ff; border:1px solid #1f6feb; }
+
+  /* ── Config box ── */
+  .config-box {
+    background:#12121a; border:1px solid #30363d;
+    border-radius:8px; padding:10px 14px; font-size:11px; color:#8b949e;
+  }
+  .config-box .c-title { color:#e6edf3; font-weight:700; font-size:12px; margin-bottom:6px; }
+
+  /* ── Demo mode banner ── */
+  .demo-banner {
+    background:#1a1a00; border:1px solid #d29922;
+    border-radius:8px; padding:8px 14px; font-size:12px;
+    color:#ffa657; margin-bottom:16px;
+  }
+  .demo-banner strong { color:#f0c040; }
+
+  /* ── Monte Carlo ── */
+  .mc-box {
+    background:#0a1a2a; border:1px solid #388bfd;
+    border-radius:8px; padding:10px 14px; font-size:11px;
+  }
+  .mc-box .m-title { color:#58a6ff; font-weight:700; font-size:12px; margin-bottom:4px; }
+
+  /* ── Section wrapper ── */
+  .section { margin-bottom:20px; }
+
+  /* ── Divider ── */
+  hr { border:none; border-top:1px solid #21262d; margin:20px 0; }
+
+  /* ── Tags ── */
+  .tag-claude { background:#1a0a2a; color:#d2a8ff; border:1px solid #6e40c9; }
+  .tag-numpy  { background:#0a2040; color:#79c0ff; border:1px solid #1f6feb; }
+  .tag-pure   { background:#0d1f0d; color:#56d364; border:1px solid #2ea043; }
+  .tag-demo   { background:#2a1500; color:#ffa657; border:1px solid #d29922; }
+
+  .legend { display:flex; gap:16px; flex-wrap:wrap; margin-bottom:20px; }
+  .legend-item { display:flex; align-items:center; gap:6px; font-size:11px; color:#8b949e; }
+  .legend-dot  { width:10px; height:10px; border-radius:50%; }
+</style>
+</head>
+<body>
+
+<h1>⚡ Renewable Energy Orchestrator</h1>
+<p class="subtitle">ET AI Hackathon: Agentic Edition · Problem 4 · Accurate Implementation Diagram</p>
+
+<div class="demo-banner">
+  <strong>Demo Mode:</strong> DEMO_MODE=true in .env — all Claude API calls replaced by pre-canned offline responses.
+  Set DEMO_MODE=false + real ANTHROPIC_API_KEY to switch to live Claude Sonnet / Haiku calls.
+</div>
+
+<!-- LEGEND -->
+<div class="legend">
+  <div class="legend-item"><div class="legend-dot" style="background:#1f6feb"></div> Claude Sonnet (Orchestrator)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#6e40c9"></div> Claude Haiku (Sub-Agents)</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#2ea043"></div> Pure Python / NumPy</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#d29922"></div> Demo Mode Fallback</div>
+  <div class="legend-item"><div class="legend-dot" style="background:#da3633"></div> Human-in-the-Loop</div>
+</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- LAYER 0: DATA INPUT                                        -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="section">
+  <div class="layer-label l1">Layer 0 — Data Input (mock_generator.py)</div>
+  <div class="row">
+    <div class="sensor"><div class="icon">☀️</div><div class="name">Solar Data</div><div class="val">5 farms · total_output_mw · irradiance</div></div>
+    <div class="sensor"><div class="icon">💨</div><div class="name">Wind Data</div><div class="val">3 farms · total_output_mw · speed_ms</div></div>
+    <div class="sensor"><div class="icon">🔋</div><div class="name">Battery Data</div><div class="val">BESS-1 · BESS-2 · soc_pct · online</div></div>
+    <div class="sensor"><div class="icon">🏭</div><div class="name">Grid Data</div><div class="val">demand_mw · frequency_hz · headroom_mw</div></div>
+    <div class="sensor"><div class="icon">💰</div><div class="name">Market Data</div><div class="val">price_mwh · carbon_price · trend</div></div>
+    <div class="sensor"><div class="icon">🌤️</div><div class="name">External Data</div><div class="val">storm_alert · weather · cloud_cover</div></div>
+  </div>
+  <div style="font-size:11px;color:#8b949e;margin-top:6px;">
+    8 Scenarios: NORMAL · CLOUD_COVER · WIND_SURGE · PRICE_SPIKE · BATTERY_FAILURE · TRANSMISSION_CAP · DEMAND_SURGE · CRISIS
+  </div>
+</div>
+
+<div class="arrow-down">▼ generate_snapshot(scenario) → run_cycle(snapshot)</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- LAYER 1: LANGGRAPH STATE MACHINE                          -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="section" style="margin-top:12px;">
+  <div class="layer-label l2">Layer 1 — LangGraph State Machine (orchestrator.py) · EnergySystemState TypedDict</div>
+
+  <!-- NODE 1: aggregate -->
+  <div class="row center">
+    <div class="node n-aggregate" style="max-width:220px; flex:0 0 220px;">
+      <div class="node-title">① Aggregate Node</div>
+      <div class="node-sub">aggregate_node(state)</div>
+      <div class="node-sub" style="margin-top:4px;">
+        total_gen = solar_mw + wind_mw<br>
+        net_balance = gen − demand<br>
+        surplus = net_balance &gt; 0
+      </div>
+      <span class="node-badge tag-pure">Pure Python</span>
+    </div>
+    <div class="arrow">→</div>
+    <div class="state-box" style="flex:1;">
+      <div class="s-title">Writes to EnergySystemState:</div>
+      <div class="state-fields">
+        <span class="s-field">system_summary.total_generation_mw</span>
+        <span class="s-field">system_summary.net_balance_mw</span>
+        <span class="s-field">system_summary.surplus</span>
+        <span class="s-field">agent_logs[]</span>
+        <span class="s-field">hitl_approved=False</span>
+      </div>
+    </div>
+  </div>
+  <div class="arrow-down">▼</div>
+
+  <!-- NODE 2: classify -->
+  <div class="row center">
+    <div class="node n-classify" style="max-width:220px; flex:0 0 220px;">
+      <div class="node-title">② Classify Node</div>
+      <div class="node-sub">classify_node(state)</div>
+      <div class="node-sub" style="margin-top:4px;">
+        NORMAL · STRESS<br>EMERGENCY · OPPORTUNITY<br>
+        + objective weight vector
+      </div>
+      <span class="node-badge tag-claude">Claude Sonnet</span>
+      <span class="node-badge tag-demo" style="margin-left:4px;">Demo fallback</span>
+    </div>
+    <div class="arrow">→</div>
+    <div class="state-box" style="flex:1;">
+      <div class="s-title">Writes to EnergySystemState:</div>
+      <div class="state-fields">
+        <span class="s-field">operational_mode</span>
+        <span class="s-field">objective_weights {cost·carbon·reliability·renewable_utilization·profit}</span>
+        <span class="s-field">situation_reasoning</span>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:#8b949e;">
+        Weight presets (config.py):<br>
+        NORMAL: cost=0.25 carbon=0.20 reliability=0.25 renew=0.20 profit=0.10<br>
+        STRESS: cost=0.15 carbon=0.10 reliability=0.50 renew=0.10 profit=0.15<br>
+        EMERGENCY: cost=0.05 carbon=0.05 reliability=0.80 renew=0.05 profit=0.05<br>
+        OPPORTUNITY: cost=0.20 carbon=0.15 reliability=0.15 renew=0.20 profit=0.30
+      </div>
+    </div>
+  </div>
+  <div class="arrow-down">▼</div>
+
+  <!-- NODE 3: quantify -->
+  <div class="row center">
+    <div class="node n-quantify" style="max-width:220px; flex:0 0 220px;">
+      <div class="node-title">③ Quantify Node</div>
+      <div class="node-sub">quantify_node(state)</div>
+      <div class="node-sub" style="margin-top:4px;">
+        P10 / P50 / P90 per stream<br>
+        Confidence scores<br>
+        Risk appetite derivation
+      </div>
+      <span class="node-badge tag-pure">Pure Python</span>
+    </div>
+    <div class="arrow">→</div>
+    <div class="state-box" style="flex:1;">
+      <div class="s-title">Writes to EnergySystemState:</div>
+      <div class="state-fields">
+        <span class="s-field">uncertainties.solar_forecast {p10·value·p90·confidence}</span>
+        <span class="s-field">uncertainties.wind_forecast</span>
+        <span class="s-field">uncertainties.demand_forecast</span>
+        <span class="s-field">uncertainties.price_forecast</span>
+        <span class="s-field">risk_appetite: CONSERVATIVE|MODERATE|AGGRESSIVE</span>
+        <span class="s-field">avg_confidence: float</span>
+      </div>
+    </div>
+  </div>
+  <div class="arrow-down">▼</div>
+
+  <!-- NODE 4: run_agents -->
+  <div class="row center">
+    <div class="node n-agents" style="max-width:220px; flex:0 0 220px;">
+      <div class="node-title">④ Run Agents Node</div>
+      <div class="node-sub">run_agents_node(state)</div>
+      <div class="node-sub" style="margin-top:4px;">
+        asyncio.gather() — all 7<br>agents run in parallel<br>
+        Windows: SelectorEventLoopPolicy
+      </div>
+      <span class="node-badge tag-claude">7× Claude Haiku</span>
+      <span class="node-badge tag-demo" style="margin-left:4px;">Demo fallback</span>
+    </div>
+    <div class="arrow">→</div>
+    <div style="flex:1;">
+      <div class="agents-grid">
+        <div class="agent-chip">
+          <div class="a-name">🔍 Monitor</div>
+          <div class="a-model">anomalies · faults · recommend_emergency</div>
+        </div>
+        <div class="agent-chip">
+          <div class="a-name">📈 Forecast</div>
+          <div class="a-model">next_15min_gen · 4hr_avg · demand_outlook</div>
+        </div>
+        <div class="agent-chip">
+          <div class="a-name">🔋 Battery</div>
+          <div class="a-model">per-unit actions · CHARGE|DISCHARGE|HOLD|OFFLINE</div>
+        </div>
+        <div class="agent-chip">
+          <div class="a-name">💰 Market</div>
+          <div class="a-model">buy|sell · volume_mw · revenue</div>
+        </div>
+        <div class="agent-chip">
+          <div class="a-name">⚡ Generation</div>
+          <div class="a-model">curtail_mw · prioritise_solar|wind</div>
+        </div>
+        <div class="agent-chip">
+          <div class="a-name">🏭 Demand</div>
+          <div class="a-model">demand_response_trigger · shifted_mw</div>
+        </div>
+        <div class="agent-chip">
+          <div class="a-name">🔧 Maintenance</div>
+          <div class="a-model">inspection_dispatch · deferred_work</div>
+        </div>
+        <div class="agent-chip" style="background:#0a1a0a;border-color:#2ea043;">
+          <div class="a-name" style="color:#56d364;">asyncio.gather()</div>
+          <div class="a-model" style="color:#2ea043;">all 7 run simultaneously</div>
+        </div>
+      </div>
+      <div class="state-box" style="margin-top:6px;">
+        <div class="s-title">Writes to EnergySystemState:</div>
+        <div class="state-fields">
+          <span class="s-field">agent_outputs {monitor·forecast·battery·market·generation·demand·maintenance}</span>
+          <span class="s-field">agent_logs[]</span>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="arrow-down">▼</div>
+
+  <!-- NODE 5: resolve -->
+  <div class="row center">
+    <div class="node n-resolve" style="max-width:220px; flex:0 0 220px;">
+      <div class="node-title">⑤ Resolve Node</div>
+      <div class="node-sub">resolve_node(state)</div>
+      <div class="node-sub" style="margin-top:4px;">
+        Reads all 7 agent outputs<br>
+        Detects contradictions<br>
+        Applies priority stack
+      </div>
+      <span class="node-badge tag-claude">Claude Sonnet</span>
+      <span class="node-badge tag-demo" style="margin-left:4px;">Demo fallback</span>
+    </div>
+    <div class="arrow">→</div>
+    <div style="flex:1;">
+      <div class="priority-row">
+        <div class="priority-item p1">① Safety</div>
+        <div style="align-self:center;color:#30363d;font-size:18px;">&gt;</div>
+        <div class="priority-item p2">② Grid Stability</div>
+        <div style="align-self:center;color:#30363d;font-size:18px;">&gt;</div>
+        <div class="priority-item p3">③ Cost</div>
+        <div style="align-self:center;color:#30363d;font-size:18px;">&gt;</div>
+        <div class="priority-item p4">④ Carbon</div>
+      </div>
+      <div class="state-box" style="margin-top:6px;">
+        <div class="s-title">Writes to EnergySystemState:</div>
+        <div class="state-fields">
+          <span class="s-field">resolved_actions [{category·action·rationale·value_mw_or_usd}]</span>
+          <span class="s-field">conflicts_detected [strings]</span>
+          <span class="s-field">conflict_reasoning</span>
+        </div>
+        <div style="margin-top:6px;font-size:11px;color:#8b949e;">
+          Categories: BATTERY · MARKET · GENERATION · DEMAND · MAINTENANCE
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="arrow-down">▼</div>
+
+  <!-- NODE 6: simulate -->
+  <div class="row center">
+    <div class="node n-simulate" style="max-width:220px; flex:0 0 220px;">
+      <div class="node-title">⑥ Simulate Node</div>
+      <div class="node-sub">simulate_node(state)</div>
+      <div class="node-sub" style="margin-top:4px;">
+        Always runs (no Demo bypass)<br>
+        6 strategies evaluated<br>
+        Top 3 returned ranked
+      </div>
+      <span class="node-badge tag-numpy">NumPy · No Claude</span>
+    </div>
+    <div class="arrow">→</div>
+    <div style="flex:1;">
+      <div class="mc-box">
+        <div class="m-title">Monte Carlo Simulation — 480 runs per cycle</div>
+        <div style="display:flex;gap:10px;flex-wrap:wrap;margin-top:6px;font-size:11px;color:#8b949e;">
+          <div>30 runs × 16 cycles (4h) × 6 strategies = 480 simulations</div>
+        </div>
+        <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:6px;margin-top:8px;">
+          <div style="background:#091520;border:1px solid #1f6feb;border-radius:6px;padding:6px;font-size:11px;">
+            <div style="color:#58a6ff;font-weight:700;">Cost-Optimised</div>
+            <div style="color:#8b949e;">HOLD · no sell · 0% curtail</div>
+          </div>
+          <div style="background:#091520;border:1px solid #1f6feb;border-radius:6px;padding:6px;font-size:11px;">
+            <div style="color:#58a6ff;font-weight:700;">Profit-Maximised</div>
+            <div style="color:#8b949e;">DISCHARGE · sell · 0%</div>
+          </div>
+          <div style="background:#091520;border:1px solid #1f6feb;border-radius:6px;padding:6px;font-size:11px;">
+            <div style="color:#58a6ff;font-weight:700;">Balanced Dispatch</div>
+            <div style="color:#8b949e;">CHARGE · sell · 10%</div>
+          </div>
+          <div style="background:#091520;border:1px solid #1f6feb;border-radius:6px;padding:6px;font-size:11px;">
+            <div style="color:#58a6ff;font-weight:700;">Carbon-Minimised</div>
+            <div style="color:#8b949e;">CHARGE · no sell · 20%</div>
+          </div>
+          <div style="background:#091520;border:1px solid #1f6feb;border-radius:6px;padding:6px;font-size:11px;">
+            <div style="color:#58a6ff;font-weight:700;">Reliability-First</div>
+            <div style="color:#8b949e;">DISCHARGE · no sell · 0%</div>
+          </div>
+          <div style="background:#091520;border:1px solid #1f6feb;border-radius:6px;padding:6px;font-size:11px;">
+            <div style="color:#58a6ff;font-weight:700;">Emergency Reserve</div>
+            <div style="color:#8b949e;">HOLD · no sell · 30%</div>
+          </div>
+        </div>
+        <div class="state-box" style="margin-top:8px;">
+          <div class="s-title">Writes to EnergySystemState:</div>
+          <div class="state-fields">
+            <span class="s-field">simulation_scenarios [{strategy·cost_p10·cost_p50·cost_p90·reliability_p50_pct·carbon_p50_tonnes·weighted_score·battery_action}]</span>
+            <span class="s-field">recommended_scenario_index</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+  <div class="arrow-down">▼</div>
+
+  <!-- NODE 7: report -->
+  <div class="row center">
+    <div class="node n-report" style="max-width:220px; flex:0 0 220px;">
+      <div class="node-title">⑦ Report Node</div>
+      <div class="node-sub">report_node(state)</div>
+      <div class="node-sub" style="margin-top:4px;">
+        Reads full state<br>
+        Generates markdown brief<br>
+        Executive summary (1 line)
+      </div>
+      <span class="node-badge tag-claude">Claude Sonnet</span>
+      <span class="node-badge tag-demo" style="margin-left:4px;">Demo fallback</span>
+    </div>
+    <div class="arrow">→</div>
+    <div class="state-box" style="flex:1;">
+      <div class="s-title">Writes to EnergySystemState:</div>
+      <div class="state-fields">
+        <span class="s-field">decision_brief (markdown: ## Situation · ## Recommended Actions · ## Risk)</span>
+        <span class="s-field">executive_summary (1-sentence)</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<div class="arrow-down">▼ graph.invoke() returns final EnergySystemState</div>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- LAYER 2: HUMAN-IN-THE-LOOP                                -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="section" style="margin-top:12px;">
+  <div class="layer-label" style="background:#2a0a0a;color:#ff7b72;border:1px solid #da3633;">
+    Layer 2 — Human-in-the-Loop (dashboard/app.py)
+  </div>
+  <div class="row">
+    <div class="output-box o-hitl" style="flex:1.5;">
+      <div class="box-title" style="color:#56d364;">👤 HITL Checkpoint</div>
+      <div class="box-sub">Operator sees full Decision Brief + all agent reasoning</div>
+      <div style="display:flex;gap:8px;margin-top:8px;">
+        <div style="background:#0d3d24;border:1px solid #2ea043;border-radius:6px;padding:6px 10px;font-size:11px;font-weight:700;color:#56d364;">
+          ✅ APPROVE<br><span style="font-weight:400;color:#8b949e;">Execute recommended actions</span>
+        </div>
+        <div style="background:#2a1a00;border:1px solid #d29922;border-radius:6px;padding:6px 10px;font-size:11px;font-weight:700;color:#ffa657;">
+          ✏️ OVERRIDE<br><span style="font-weight:400;color:#8b949e;">Custom instruction → re-resolve</span>
+        </div>
+      </div>
+      <div style="margin-top:8px;font-size:11px;color:#8b949e;">
+        hitl_approved → True | hitl_override → custom text
+      </div>
+    </div>
+    <div class="output-box o-brief" style="flex:1;">
+      <div class="box-title" style="color:#f0c040;">📋 Decision Brief</div>
+      <div class="box-sub">## Situation<br>## Recommended Actions<br>## Risk Assessment<br>## Conflict Resolution</div>
+    </div>
+    <div class="output-box o-actions" style="flex:1;">
+      <div class="box-title" style="color:#58a6ff;">📊 Dashboard Tabs</div>
+      <div class="box-sub">
+        Live Dashboard (KPIs + gauges)<br>
+        Agent Reasoning (7 outputs)<br>
+        Scenarios (Monte Carlo charts)<br>
+        Decision Brief (markdown)<br>
+        History (trends over cycles)<br>
+        9-Blocker (self-assessment)
+      </div>
+    </div>
+    <div class="output-box o-log" style="flex:1;">
+      <div class="box-title" style="color:#ff7b72;">📝 Audit Log</div>
+      <div class="box-sub">
+        agent_logs[] — Annotated[list, operator.add]<br>
+        Every node appends entries.<br>
+        LangGraph merges automatically.<br><br>
+        [Aggregator] · [Classifier]<br>
+        [Uncertainty] · [MONITOR]<br>
+        [FORECAST] · [BATTERY]<br>
+        [MARKET] · [GENERATION]<br>
+        [DEMAND] · [MAINTENANCE]<br>
+        [ConflictResolver] · [Simulator]<br>
+        [Reporter]
+      </div>
+    </div>
+  </div>
+</div>
+
+<hr>
+
+<!-- ═══════════════════════════════════════════════════════════ -->
+<!-- TECH STACK & CONFIG                                        -->
+<!-- ═══════════════════════════════════════════════════════════ -->
+<div class="row" style="margin-top:4px;">
+  <div class="config-box" style="flex:1;">
+    <div class="c-title">Tech Stack</div>
+    <div style="display:flex;flex-wrap:wrap;gap:5px;font-size:11px;">
+      <span style="background:#0d2040;color:#79c0ff;border:1px solid #1f6feb;border-radius:4px;padding:2px 7px;">LangGraph ≥0.2.28</span>
+      <span style="background:#1a0a2a;color:#d2a8ff;border:1px solid #6e40c9;border-radius:4px;padding:2px 7px;">anthropic ≥0.40.0</span>
+      <span style="background:#0d2040;color:#79c0ff;border:1px solid #1f6feb;border-radius:4px;padding:2px 7px;">streamlit ≥1.38.0</span>
+      <span style="background:#0d2040;color:#79c0ff;border:1px solid #1f6feb;border-radius:4px;padding:2px 7px;">plotly ≥5.24.0</span>
+      <span style="background:#0d2040;color:#79c0ff;border:1px solid #1f6feb;border-radius:4px;padding:2px 7px;">numpy ≥1.26.0</span>
+      <span style="background:#0d2040;color:#79c0ff;border:1px solid #1f6feb;border-radius:4px;padding:2px 7px;">pandas ≥2.2.0</span>
+      <span style="background:#0d2040;color:#79c0ff;border:1px solid #1f6feb;border-radius:4px;padding:2px 7px;">pydantic ≥2.8.0</span>
+      <span style="background:#0d2040;color:#79c0ff;border:1px solid #1f6feb;border-radius:4px;padding:2px 7px;">python-dotenv ≥1.0.0</span>
+      <span style="background:#0d1117;color:#8b949e;border:1px solid #30363d;border-radius:4px;padding:2px 7px;">Python 3.14 · Windows 11</span>
+    </div>
+  </div>
+  <div class="config-box" style="flex:1;">
+    <div class="c-title">config.py</div>
+    <div style="font-size:11px;color:#8b949e;line-height:1.8;">
+      ORCHESTRATOR_MODEL = claude-sonnet-4-5<br>
+      SUBAGENT_MODEL &nbsp;&nbsp;&nbsp;&nbsp;= claude-haiku-4-5-20251001<br>
+      SIMULATION_CYCLES &nbsp;= 16 &nbsp;&nbsp;(4-hour horizon)<br>
+      MONTE_CARLO_RUNS &nbsp;&nbsp;= 30<br>
+      SOLAR_FARMS &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= 5<br>
+      WIND_FARMS &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= 3<br>
+      BATTERIES &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;= 2
+    </div>
+  </div>
+  <div class="config-box" style="flex:1;">
+    <div class="c-title">Entry Points</div>
+    <div style="font-size:11px;color:#8b949e;line-height:1.9;">
+      <strong style="color:#e6edf3;">dashboard/app.py</strong> — Streamlit UI<br>
+      &nbsp;&nbsp;python -m streamlit run dashboard/app.py<br>
+      <strong style="color:#e6edf3;">main.py</strong> — CLI<br>
+      &nbsp;&nbsp;python main.py --scenario CRISIS<br>
+      &nbsp;&nbsp;python main.py --simulate 96<br>
+      <strong style="color:#e6edf3;">e2e_validation.py</strong> — Tests<br>
+      &nbsp;&nbsp;269/269 passing · 8 scenarios
+    </div>
+  </div>
+</div>
+
+<hr>
+<div style="font-size:11px;color:#484f58;text-align:center;">
+  Renewable Energy Orchestrator · ET AI Hackathon: Agentic Edition · Problem 4 · Accenture
+</div>
+
+</body>
+</html>
